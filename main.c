@@ -122,7 +122,7 @@ int main(int argc, char **argv)
 	if(argc>1)
 		if(!strcmp(argv[1],"-v"))
 		{
-			printf("*** Adressbuch ***   Author: Felix Hanisch   Version 0.1   19.11.2016\n");
+			printf("*** Adressbuch ***   Author: FH   Version 0.1   19.11.2016\n");
 			return 0;
 		}
 		else
