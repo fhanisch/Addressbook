@@ -12,10 +12,10 @@ ________________________________________________________________________________
 #define FILENAME "book1.adr"
 
 typedef struct{
-	char name[64];
-	char preName[64];
-	unsigned int age;
-	char phone[32];
+	char *name;
+	char *preName;
+	char *age;
+	char *phone;
 } Addr;
 
 static unsigned int entries;
@@ -40,23 +40,31 @@ static void addAddr(Addr **book, Addr addr)
 	free(tmpBook);
 }
 
+void cpyEntry(char **str, GtkEntry *e)
+{
+	char *text = g_strdup(gtk_entry_get_text(e));
+	unsigned int len = strlen(text)+1; 
+	*str = malloc(len);	
+	strcpy(*str,text);	
+}
+
 static void saveAddr(GtkWidget *widget, Addr **book)
 {
-	Addr addr;
+	Addr addr;	
 	char *age;
 	FILE *file;
 	char strbuf[128];
+	unsigned int i;
 	
-	strcpy(addr.name,g_strdup(gtk_entry_get_text(eName)));
-	strcpy(addr.preName,g_strdup(gtk_entry_get_text(ePreName)));
-	age=g_strdup(gtk_entry_get_text(eAge));
-	sscanf(age,"%d",&addr.age);
-	strcpy(addr.phone,g_strdup(gtk_entry_get_text(ePhone)));
+	cpyEntry(&addr.name, eName);
+	cpyEntry(&addr.preName, ePreName);
+	cpyEntry(&addr.age, eAge);
+	cpyEntry(&addr.phone, ePhone);
 
 	g_print("Speichere Adresse\n");
 	g_print("Name: %s\n",addr.name);
 	g_print("Vorname: %s\n",addr.preName);
-	g_print("Alter: %d\n",addr.age);
+	g_print("Alter: %s\n",addr.age);
 	g_print("Telefon: %s\n",addr.phone);
 	
 	if (active_id==-1)
@@ -68,27 +76,31 @@ static void saveAddr(GtkWidget *widget, Addr **book)
 		entries++;
 	}
 	else
-	{
+	{		
 		memcpy(*book+active_id,&addr,sizeof(Addr));
 	}
-
+	
 	file = fopen(FILENAME,"w");
 	fwrite(&entries,1,sizeof(entries),file);
-	fwrite(*book,entries,sizeof(Addr),file);
+	for (i=0;i<entries;i++)
+	{
+		fwrite((*book)[i].name,1,strlen((*book)[i].name)+1,file);
+		fwrite((*book)[i].preName,1,strlen((*book)[i].preName)+1,file);
+		fwrite((*book)[i].age,1,strlen((*book)[i].age)+1,file);
+		fwrite((*book)[i].phone,1,strlen((*book)[i].phone)+1,file);
+	}
 	fclose(file);		
 }
 
-static void setAddr(GtkWidget *widget, Addr **b)
+static void setAddr(GtkWidget *widget, Addr **book)
 {
 	char *str;
 	char strbuf[32];
-	Addr *book;
 	
-	book = *b;
 	str = gtk_combo_box_text_get_active_text(addrList);
 	g_print("%s\n",str);
 	str = g_strdup(gtk_combo_box_get_active_id((GtkComboBox*)addrList));
-	g_print("%s\n",str);
+	g_print("%s\n",str);	
 	sscanf(str,"%d",&active_id);
 	if (active_id==-1)
 	{
@@ -98,12 +110,11 @@ static void setAddr(GtkWidget *widget, Addr **b)
 		gtk_entry_set_text(ePhone,"");		
 	}
 	else
-	{
-		gtk_entry_set_text(eName,book[active_id].name);
-		gtk_entry_set_text(ePreName,book[active_id].preName);
-		sprintf(strbuf,"%d\0",book[active_id].age);
-		gtk_entry_set_text(eAge,strbuf);
-		gtk_entry_set_text(ePhone,book[active_id].phone);
+	{		
+		gtk_entry_set_text(eName,(*book)[active_id].name);
+		gtk_entry_set_text(ePreName,(*book)[active_id].preName);		
+		gtk_entry_set_text(eAge,(*book)[active_id].age);
+		gtk_entry_set_text(ePhone,(*book)[active_id].phone);
 	}
 	free(str);
 }
@@ -116,8 +127,10 @@ int main(int argc, char **argv)
 	FILE *file;
 	unsigned int filesize;
 	Addr *book;
-	unsigned int i;
+	char **field;
+	unsigned int i,j,k;
 	char strbuf[128];
+	char c;
 
 	if(argc>1)
 		if(!strcmp(argv[1],"-v"))
@@ -144,8 +157,25 @@ int main(int argc, char **argv)
 		filesize=ftell(file);
 		rewind(file);
 		fread(&entries,1,sizeof(entries),file);
-		book = malloc(entries*sizeof(Addr));
-		fread(book,entries,sizeof(Addr),file);
+		book = malloc(entries*sizeof(Addr));		
+		for (i=0;i<entries;i++)
+		{
+			field = (char**)&book[i];
+			for (j=0;j<4;j++)
+			{				
+				k=0;
+				c=1;		
+				while (c!=0)
+				{
+					fread(strbuf+k,1,1,file);
+					c=strbuf[k];
+					k++;
+				}
+				field[j] = malloc(k);
+				strcpy(field[j],strbuf);				
+				printf("%s\n",field[j]);				
+			}			
+		}	
 		fclose(file);
 		printf("Datei %s geladen.\n",FILENAME);
 		printf("Dateigröße: %d\n",filesize);
