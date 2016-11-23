@@ -180,6 +180,7 @@ int main(int argc, char **argv)
 		printf("Datei %s geladen.\n",FILENAME);
 		printf("Dateigröße: %d\n",filesize);
 		printf("Einträge: %d\n",entries);
+		printf("Size of Address: %d\n",sizeof(Addr));
 	}
 
 	gtk_init (&argc, &argv);
