@@ -8,6 +8,8 @@ ________________________________________________________________________________
 #include <stdlib.h>
 #include <string.h>
 #include <gtk/gtk.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
 
 #define FILENAME "book1.adr"
 
@@ -79,7 +81,7 @@ static void saveAddr(GtkWidget *widget, Addr **book)
 	{		
 		memcpy(*book+active_id,&addr,sizeof(Addr));
 	}
-	
+		
 	file = fopen(FILENAME,"w");
 	fwrite(&entries,1,sizeof(entries),file);
 	for (i=0;i<entries;i++)
@@ -131,8 +133,16 @@ int main(int argc, char **argv)
 	unsigned int i,j,k;
 	char strbuf[128];
 	char c;
+	//client
+	int clientsocket;
+	int port=12345;
+	char ip[]="192.168.1.100";
+	struct sockaddr_in addr;
+	int numbytes;
+	char msg[]="Hallo Server!!!";
 
 	if(argc>1)
+	{
 		if(!strcmp(argv[1],"-v"))
 		{
 			printf("*** Adressbuch ***   Author: FH   Version 0.1   19.11.2016\n");
@@ -143,6 +153,32 @@ int main(int argc, char **argv)
 			printf("Unknown command!\n");
 			return 0;
 		}
+	}
+	
+	//client
+	clientsocket=socket(AF_INET,SOCK_STREAM,0);
+	if(clientsocket<0)
+	{
+		printf("Fehler: Der Socket konnte nicht erstellt werden!\n");    
+		return -1;
+	}		
+	printf("ClientSocket erstellt...\n");  
+	addr.sin_family=AF_INET;
+	addr.sin_port=htons(port);
+	addr.sin_addr.s_addr=inet_addr(ip);
+	printf("Verbindungsaufbau...\n");
+	if (connect(clientsocket,(struct sockaddr*)&addr,sizeof(addr))<0)
+	{
+		printf("Fehler: Verbindungsaufbau fehlgeschlagen!\n");
+		close(clientsocket);
+		return -1;
+	}
+	printf("Verbunden mit %s:%i\n",ip,port);
+	if ((numbytes=send(clientsocket,msg,sizeof(msg),0))<0)
+	{
+		printf("Senden fehlgeschlagen!\n");
+	}
+	printf("%i Bytes gesendet...\n",numbytes);
  
 	file = fopen(FILENAME,"r");
 	if (!file) 
