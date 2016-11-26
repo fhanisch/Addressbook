@@ -26,6 +26,21 @@ static GtkEntry *eName, *ePreName, *eAge, *ePhone;
 static GtkComboBoxText *addrList;
 
 
+int ssend(int sock, char *buf)
+{
+  int numbytes;
+  
+  numbytes=send(sock,buf,32,0);
+  if (numbytes<=0)
+  {
+    printf("Senden fehlgeschlagen!\n");
+    return 1;
+  }
+  
+  printf("%i Bytes gesendet...\n",numbytes);  
+  return 0;
+}
+
 static void addAddr(Addr **book, Addr addr)
 {
 	Addr *tmpBook;
@@ -81,7 +96,7 @@ static void saveAddr(GtkWidget *widget, Addr **book)
 	{		
 		memcpy(*book+active_id,&addr,sizeof(Addr));
 	}
-		
+
 	file = fopen(FILENAME,"w");
 	fwrite(&entries,1,sizeof(entries),file);
 	for (i=0;i<entries;i++)
@@ -136,10 +151,11 @@ int main(int argc, char **argv)
 	//client
 	int clientsocket;
 	int port=12345;
-	char ip[]="192.168.1.100";
+	char ip[]="192.168.1.101";
 	struct sockaddr_in addr;
 	int numbytes;
 	char msg[]="Hallo Server!!!";
+	int status;
 
 	if(argc>1)
 	{
@@ -174,11 +190,8 @@ int main(int argc, char **argv)
 		return -1;
 	}
 	printf("Verbunden mit %s:%i\n",ip,port);
-	if ((numbytes=send(clientsocket,msg,sizeof(msg),0))<0)
-	{
-		printf("Senden fehlgeschlagen!\n");
-	}
-	printf("%i Bytes gesendet...\n",numbytes);
+	status = ssend(clientsocket,msg);
+	status = ssend(clientsocket,"Guten Tag!");
  
 	file = fopen(FILENAME,"r");
 	if (!file) 

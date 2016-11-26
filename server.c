@@ -9,6 +9,21 @@ ________________________________________________________________________________
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
+
+int srcv(int sock, char *buf)
+{
+  int numbytes;
+  
+  numbytes=recv(sock,buf,32,0);
+  if (numbytes<=0)
+  {
+    printf("Empfangen fehlgeschlagen!\n");    
+    return 1;
+  }  
+  printf("%i Bytes empfangen: %s\n",numbytes,buf);
+  return 0;
+}
+
 int main(int argc, char **argv)
 {
 	int acceptsocket, serversocket;
@@ -16,7 +31,9 @@ int main(int argc, char **argv)
 	int sz_sock = sizeof(struct sockaddr_in);
 	int port=12345;
 	int numbytes;
-	char recvbuf[256];
+	char rcvbuf[256];
+	int status;
+	int connected;
 	
 	if(argc>1)
 	{
@@ -59,24 +76,35 @@ int main(int argc, char **argv)
 		close(acceptsocket);
 		return -1;
 	}
-	printf("Warte auf Verbindungen...\n");
 	
-	serversocket=accept(acceptsocket,(struct sockaddr*)&client_addr,(socklen_t*)&sz_sock);
-	if(serversocket<0)
+	while(1)
 	{
-		printf("Verbindung fehlgeschlagen!\n");
-		close(acceptsocket);
-		return -1;
+		printf("Warte auf Verbindungen...\n");
+		
+		serversocket=accept(acceptsocket,(struct sockaddr*)&client_addr,(socklen_t*)&sz_sock);
+		if(serversocket<0)
+		{
+			printf("Verbindung fehlgeschlagen!\n");
+			close(acceptsocket);
+			return -1;
+		}
+		printf("Verbindung akzeptiert. Verbunden mit Serversocket: %d\n",serversocket);
+		connected = 1;
+		while(connected)
+		{
+			status = srcv(serversocket,rcvbuf);
+			if(status)
+			{
+				printf("Verbindung unterbrochen!\n");
+				connected=0;
+				close(serversocket);
+			}
+			else
+			{
+				
+			}
+		}
 	}
-	printf("Verbindung akzeptiert...\n");
-	printf("Serversocket: %d\n",serversocket);
-	if ((numbytes=recv(serversocket,recvbuf,256,0))<0)
-	{
-		printf("Empfangen fehlgeschlagen!\n");
-		return 1;
-	}
-	printf("%i Bytes empfangen: %s\n",numbytes,recvbuf);
-	
 	close(serversocket);
 	close(acceptsocket);	
 	return 0;
