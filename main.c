@@ -8,10 +8,11 @@ ________________________________________________________________________________
 #include <stdlib.h>
 #include <string.h>
 #include <gtk/gtk.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
+#include <socket_comm.h>
+
 
 #define FILENAME "book1.adr"
+
 
 typedef struct{
 	char *name;
@@ -26,25 +27,10 @@ static GtkEntry *eName, *ePreName, *eAge, *ePhone;
 static GtkComboBoxText *addrList;
 
 
-int ssend(int sock, char *buf)
-{
-  int numbytes;
-  
-  numbytes=send(sock,buf,32,0);
-  if (numbytes<=0)
-  {
-    printf("Senden fehlgeschlagen!\n");
-    return 1;
-  }
-  
-  printf("%i Bytes gesendet...\n",numbytes);  
-  return 0;
-}
-
 static void addAddr(Addr **book, Addr addr)
 {
 	Addr *tmpBook;
-	char *ptr;
+	//char *ptr;
 
 	tmpBook = *book;
 	*book = calloc(entries+1,sizeof(Addr));	
@@ -67,8 +53,7 @@ void cpyEntry(char **str, GtkEntry *e)
 
 static void saveAddr(GtkWidget *widget, Addr **book)
 {
-	Addr addr;	
-	char *age;
+	Addr addr;
 	FILE *file;
 	char strbuf[128];
 	unsigned int i;
@@ -87,7 +72,7 @@ static void saveAddr(GtkWidget *widget, Addr **book)
 	if (active_id==-1)
 	{				
 		addAddr(book, addr);
-		sprintf(strbuf,"%d\0",entries);
+		sprintf(strbuf,"%d",entries);
 		gtk_combo_box_text_append(addrList,strbuf,addr.name);
 		gtk_combo_box_set_active_id((GtkComboBox*)addrList,strbuf);
 		entries++;
@@ -112,7 +97,6 @@ static void saveAddr(GtkWidget *widget, Addr **book)
 static void setAddr(GtkWidget *widget, Addr **book)
 {
 	char *str;
-	char strbuf[32];
 	
 	str = gtk_combo_box_text_get_active_text(addrList);
 	g_print("%s\n",str);
@@ -147,14 +131,9 @@ int main(int argc, char **argv)
 	char **field;
 	unsigned int i,j,k;
 	char strbuf[128];
-	char c;
-	//client
-	int clientsocket;
+	char c;	
 	int port=12345;
-	char ip[]="192.168.1.101";
-	struct sockaddr_in addr;
-	int numbytes;
-	char msg[]="Hallo Server!!!";
+	char ip[]="192.168.1.100";		
 	int status;
 
 	if(argc>1)
@@ -170,28 +149,15 @@ int main(int argc, char **argv)
 			return 0;
 		}
 	}
-	
-	//client
-	clientsocket=socket(AF_INET,SOCK_STREAM,0);
-	if(clientsocket<0)
+		
+	status = createClient(port, ip);
+	if(status)
 	{
-		printf("Fehler: Der Socket konnte nicht erstellt werden!\n");    
-		return -1;
-	}		
-	printf("ClientSocket erstellt...\n");  
-	addr.sin_family=AF_INET;
-	addr.sin_port=htons(port);
-	addr.sin_addr.s_addr=inet_addr(ip);
-	printf("Verbindungsaufbau...\n");
-	if (connect(clientsocket,(struct sockaddr*)&addr,sizeof(addr))<0)
-	{
-		printf("Fehler: Verbindungsaufbau fehlgeschlagen!\n");
-		close(clientsocket);
+		printf("%s",getLastErr());
 		return -1;
 	}
-	printf("Verbunden mit %s:%i\n",ip,port);
-	status = ssend(clientsocket,msg);
-	status = ssend(clientsocket,"Guten Tag!");
+	
+	status = sendCmdToServer(CMD_OPEN_FILE);
  
 	file = fopen(FILENAME,"r");
 	if (!file) 
@@ -245,12 +211,12 @@ int main(int argc, char **argv)
 	btnSave = (GtkButton*)gtk_builder_get_object(builder, "btnSave");	
 	addrList = (GtkComboBoxText*)gtk_builder_get_object(builder, "addrList");
 
-	sprintf(strbuf,"%d\0",-1);
+	sprintf(strbuf,"%d",-1);
 	gtk_combo_box_text_append(addrList,strbuf,"(neu)");
 	gtk_combo_box_set_active_id((GtkComboBox*)addrList,strbuf);
 	for (i=0;i<entries;i++)
 	{
-		sprintf(strbuf,"%d\0",i);
+		sprintf(strbuf,"%d",i);
 		gtk_combo_box_text_append(addrList,strbuf,book[i].name);
 	}	
 	
