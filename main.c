@@ -53,10 +53,13 @@ void cpyEntry(char **str, GtkEntry *e)
 
 static void saveAddr(GtkWidget *widget, Addr **book)
 {
-	Addr addr;
-	FILE *file;
+	Addr addr;	
 	char strbuf[128];
-	unsigned int i;
+	void *prhs[2];
+	void *plhs;
+	char **field;
+	unsigned int i,j;
+	unsigned int sz;
 	
 	cpyEntry(&addr.name, eName);
 	cpyEntry(&addr.preName, ePreName);
@@ -82,16 +85,30 @@ static void saveAddr(GtkWidget *widget, Addr **book)
 		memcpy(*book+active_id,&addr,sizeof(Addr));
 	}
 
-	file = fopen(FILENAME,"w");
-	fwrite(&entries,1,sizeof(entries),file);
+	prhs[0] = CMD_OPEN_FILE;
+	prhs[1] = FILENAME;
+	prhs[2] = "w";
+	sendCmdToServer(&plhs, 3, prhs);
+	
+	prhs[0] = CMD_WRITE_FILE;
+	prhs[1] = &entries;
+	sz = sizeof(unsigned int);
+	prhs[2] = &sz;
+	sendCmdToServer(&plhs, 3, prhs);	
 	for (i=0;i<entries;i++)
 	{
-		fwrite((*book)[i].name,1,strlen((*book)[i].name)+1,file);
-		fwrite((*book)[i].preName,1,strlen((*book)[i].preName)+1,file);
-		fwrite((*book)[i].age,1,strlen((*book)[i].age)+1,file);
-		fwrite((*book)[i].phone,1,strlen((*book)[i].phone)+1,file);
+		field = (char**)&(*book)[i];
+		for (j=0;j<4;j++)
+		{
+			prhs[0] = CMD_WRITE_FILE;
+			prhs[1] = field[j];			
+			sz = strlen(field[j])+1;
+			prhs[2] = &sz;
+			sendCmdToServer(&plhs, 3, prhs);			
+		}
 	}
-	fclose(file);		
+	prhs[0] = CMD_CLOSE_FILE;
+	sendCmdToServer(&plhs,1,prhs);		
 }
 
 static void setAddr(GtkWidget *widget, Addr **book)
@@ -124,8 +141,7 @@ int main(int argc, char **argv)
 {
 	GtkBuilder *builder;
 	GObject *window;
-	GtkButton *btnSave;	
-	FILE *file;
+	GtkButton *btnSave;		
 	unsigned int filesize;
 	Addr *book;
 	char **field;
@@ -134,33 +150,37 @@ int main(int argc, char **argv)
 	char c;	
 	int port=12345;
 	char ip[]="192.168.1.100";		
-	int status;
+	status st;
+	void *prhs[2];
+	void *plhs;
+	unsigned int sz;
 
 	if(argc>1)
 	{
 		if(!strcmp(argv[1],"-v"))
 		{
 			printf("*** Adressbuch ***   Author: FH   Version 0.1   19.11.2016\n");
-			return 0;
+			return ok;
 		}
 		else
 		{
 			printf("Unknown command!\n");
-			return 0;
+			return ok;
 		}
 	}
 		
-	status = createClient(port, ip);
-	if(status)
+	st = createClient(port, ip);
+	if(st)
 	{
 		printf("%s",getLastErr());
-		return -1;
+		return err1;
 	}
 	
-	status = sendCmdToServer(CMD_OPEN_FILE);
- 
-	file = fopen(FILENAME,"r");
-	if (!file) 
+	prhs[0] = CMD_OPEN_FILE;
+	prhs[1] = FILENAME;
+	prhs[2] = "r";
+	st = sendCmdToServer(&plhs, 3, prhs);
+	if (st)
 	{
 		entries=0;
 		book = malloc(sizeof(Addr));
@@ -168,11 +188,19 @@ int main(int argc, char **argv)
 	}
 	else
 	{
-		fseek(file,0,SEEK_END);
-		filesize=ftell(file);
-		rewind(file);
-		fread(&entries,1,sizeof(entries),file);
-		book = malloc(entries*sizeof(Addr));		
+		prhs[0] = CMD_GET_FILESIZE;
+		sendCmdToServer(&plhs,1,prhs);
+		filesize = *(unsigned int*)plhs;
+		printf("Dateigröße: %d\n",filesize);
+				
+		prhs[0] = CMD_READ_FILE;
+		sz = sizeof(unsigned int);
+		prhs[1] = &sz;
+		sendCmdToServer(&plhs,2,prhs);
+		entries=*(unsigned int*)plhs;	
+			
+		printf("Einträge: %d\n",entries);		
+		book = malloc(entries*sizeof(Addr));
 		for (i=0;i<entries;i++)
 		{
 			field = (char**)&book[i];
@@ -182,7 +210,11 @@ int main(int argc, char **argv)
 				c=1;		
 				while (c!=0)
 				{
-					fread(strbuf+k,1,1,file);
+					prhs[0] = CMD_READ_FILE;
+					sz=1;
+					prhs[1] = &sz;
+					sendCmdToServer(&plhs,2,prhs);
+					strbuf[k] = *(char*)plhs;					
 					c=strbuf[k];
 					k++;
 				}
@@ -191,10 +223,9 @@ int main(int argc, char **argv)
 				printf("%s\n",field[j]);				
 			}			
 		}	
-		fclose(file);
-		printf("Datei %s geladen.\n",FILENAME);
-		printf("Dateigröße: %d\n",filesize);
-		printf("Einträge: %d\n",entries);
+		prhs[0] = CMD_CLOSE_FILE;
+		sendCmdToServer(&plhs,1,prhs);
+		printf("Datei %s geladen.\n",FILENAME);				
 		printf("Size of Address: %d\n",sizeof(Addr));
 	}
 
@@ -226,5 +257,5 @@ int main(int argc, char **argv)
 
 	gtk_main ();
 
-	return 0;
+	return ok;
 }

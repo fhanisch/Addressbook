@@ -13,7 +13,7 @@ ________________________________________________________________________________
 int main(int argc, char **argv)
 {
 	int port=12345;	
-	int status;
+	status st;
 	int connected;
 	
 	if(argc>1)
@@ -21,52 +21,48 @@ int main(int argc, char **argv)
 		if(!strcmp(argv[1],"-v"))
 		{
 			printf("*** Adressbuch Server ***   Author: FH   Version 0.1   24.11.2016\n");
-			return 0;
+			return ok;
 		}
 		else
 		{
 			printf("Unknown command!\n");
-			return 0;
+			return ok;
 		}
 	}
 	
 	printf("Addressbook Server\n");
 	
-	status = createServer(port);
-	if (status)
+	st = createServer(port);
+	if (st)
 	{
 			printf("%s",getLastErr());
-			return -1;
+			return err1;
 	}			
 	
 	while(1)
 	{
 		printf("Warte auf Verbindungen...\n");
 		
-		status = waitForConnections();
-		if (status)
+		st = waitForConnections();
+		if (st)
 		{
 			printf("%s",getLastErr());
-			return -1;
+			return err1;
 		}		
 		connected = 1;
 		
 		while(connected)
 		{
-			status = rcvCmdFromClient();
-			if(status)
+			st = rcvCmdFromClient();
+			if(st==noConn)
 			{		
 				printf("%s",getLastErr());		
 				connected=0;				
-			}
-			else
-			{
-				
-			}
+			}			
 		}
 	}
 	
 	closeServer();	
 	
-	return 0;
+	return ok;
 }
