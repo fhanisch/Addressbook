@@ -83,10 +83,8 @@ static void saveAddr(GtkWidget *widget, Addr **book)
 		memcpy(*book+active_id,&addr,sizeof(Addr));
 	}
 
-	openFile(FILENAME,"w");
-	openFileMSD(FILENAME,"w");
-	writeFile((char*)&entries,sizeof(unsigned int));
-	writeFileMSD((char*)&entries,sizeof(unsigned int));
+	openFile(FILENAME,"w");	
+	writeFile((char*)&entries,sizeof(unsigned int));	
 	printf("Write Entries: %d\n",entries);
 	for (i=0;i<entries;i++)
 	{
@@ -94,12 +92,10 @@ static void saveAddr(GtkWidget *widget, Addr **book)
 		for (j=0;j<4;j++)
 		{			
 			sz = strlen(field[j])+1;			
-			writeFile(field[j],sz);
-			writeFileMSD(field[j],sz);
+			writeFile(field[j],sz);			
 		}
 	}
-	closeFile();
-	closeFileMSD();
+	closeFile();	
 }
 
 static void setAddr(GtkWidget *widget, Addr **book)
@@ -164,6 +160,7 @@ int main(int argc, char **argv)
 		return err1;
 	}
 	
+	setMedium(flashstick);
 	st = openFile(FILENAME, "r");
 	if (st)
 	{
@@ -174,8 +171,7 @@ int main(int argc, char **argv)
 	else
 	{
 		filesize = getFilesize();
-		printf("Dateigröße: %d\n",filesize);
-				
+		printf("Dateigröße: %d\n",filesize);		
 		readFile((char*)&entries,sizeof(unsigned int));
 		printf("Einträge: %d\n",entries);		
 		book = malloc(entries*sizeof(Addr));
@@ -196,7 +192,7 @@ int main(int argc, char **argv)
 				strcpy(field[j],strbuf);				
 				printf("%s\n",field[j]);				
 			}			
-		}	
+		}		
 		closeFile();
 		printf("Datei %s geladen.\n",FILENAME);				
 		printf("Size of Address: %d\n",sizeof(Addr));
